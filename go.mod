@@ -1,3 +1,3 @@
-module github.com/kazerlelutin/k-space-go
+module k-space-go
 
 go 1.23
