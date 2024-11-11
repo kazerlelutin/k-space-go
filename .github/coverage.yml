@@ -1,4 +1,4 @@
-name: Go Coverage
+name: Go CI with Coverage
 
 on:
   push:
@@ -13,30 +13,44 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
     steps:
-    - uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.20
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.20
 
-    - name: Install Dependencies
-      run: go mod tidy
+      - name: Install Dependencies
+        run: go mod tidy
 
-    - name: Run Tests with Coverage
-      run: go test ./... -coverprofile=coverage.out
+      - name: Run Tests with Coverage
+        run: go test ./... -coverprofile=coverage.out
 
-    - name: Upload Coverage Report
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: coverage-report
-        path: coverage.out
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage.out
 
-    - name: Generate Coverage Badge (Optional)
-      run: go tool cover -func=coverage.out -o coverage.txt
+      - name: Set Coverage Message
+        id: set-coverage
+        shell: bash
+        run: |
+          echo "coverage_message<<EOF" >> $GITHUB_OUTPUT
+          go tool cover -func=coverage.out >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-    - name: Display Coverage Summary
-      run: |
-        go tool cover -func=coverage.out
+      - name: Comment Coverage Report on PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: '${{ steps.set-coverage.outputs.coverage_message }}'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
